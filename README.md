@@ -9,7 +9,7 @@
 
 ### Overview
 
-This repository is a **fork of the original Frets on Fire legacy codebase**, originally written in Python 2, with the goal of **porting and keeping the game functional on modern Python versions (Python 3.11+)**.
+This repository is a **fork of the original Frets on Fire legacy codebase**, originally written in Python 2, with the goal of **porting and keeping the game functional on modern Python versions (Python 3.11)**.
 
 The main goals of this fork are:
 - Python 3 compatibility
@@ -30,7 +30,7 @@ This is **not a rewrite**, but an **incremental and conservative port**.
 
 ### Requirements (running from source)
 
-- Python 3.11+
+- Python 3.11
 - pip
 - pygame 2.x
 
@@ -126,7 +126,7 @@ Contributions are welcome, especially:
 
 ### Visão geral
 
-Este repositório é um **fork do código legado original do Frets on Fire**, originalmente escrito em Python 2, com o objetivo de **portar e manter o jogo funcional em versões modernas do Python (Python 3.11+)**.
+Este repositório é um **fork do código legado original do Frets on Fire**, originalmente escrito em Python 2, com o objetivo de **portar e manter o jogo funcional em versões modernas do Python (Python 3.11)**.
 
 Os principais objetivos deste fork são:
 
@@ -148,7 +148,7 @@ Este **não é um rewrite**, mas sim um **port incremental e conservador**.
 
 ### Requisitos (executando pelo código-fonte)
 
-* Python 3.11+
+* Python 3.11
 * pip
 * pygame 2.x
 
