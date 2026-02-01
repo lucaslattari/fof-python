@@ -1,8 +1,9 @@
+# src/Language.py
 #####################################################################
 # -*- coding: iso-8859-1 -*-                                        #
 #                                                                   #
 # Frets on Fire                                                     #
-# Copyright (C) 2006 Sami Ky�stil�                                  #
+# Copyright (C) 2006 Sami Ky�stil�                                  #
 #                                                                   #
 # This program is free software; you can redistribute it and/or     #
 # modify it under the terms of the GNU General Public License       #
@@ -20,37 +21,61 @@
 # MA  02110-1301, USA.                                              #
 #####################################################################
 
-import Config
-import Version
-import Log
+import glob
 import gettext
 import os
-import glob
 
+import Config
+import Log
+import Version
+
+# Config key (placeholder inicial; depois redefinimos com opções)
 Config.define("game", "language", str, "")
 
-def getAvailableLanguages():
-  return [os.path.basename(l).capitalize().replace(".mo", "").replace("_", " ") for l in glob.glob(os.path.join(Version.dataPath(), "translations", "*.mo"))]
 
-def dummyTranslator(string):
-  return string
+def getAvailableLanguages():
+    # Ex.: data/translations/Brazilian_portuguese.mo -> "Brazilian portuguese"
+    pattern = os.path.join(Version.dataPath(), "translations", "*.mo")
+    langs = []
+    for path in glob.glob(pattern):
+        base = os.path.basename(path)
+        # remove extensão
+        name = base[:-3] if base.lower().endswith(".mo") else base
+        # normaliza "pt_br" -> "Pt br" (mantém a vibe original)
+        langs.append(name.capitalize().replace("_", " "))
+    return langs
+
+
+def dummyTranslator(string: str) -> str:
+    return string
+
 
 language = Config.load(Version.appName() + ".ini").get("game", "language")
 _ = dummyTranslator
 
 if language:
-  try:
-    trFile = os.path.join(Version.dataPath(), "translations", "%s.mo" % language.lower().replace(" ", "_"))
-    catalog = gettext.GNUTranslations(open(trFile, "rb"))
-    def translate(m):
-      return catalog.gettext(m).decode("utf-8")
-    _ = translate
-  except Exception, x:
-    Log.warn("Unable to select language '%s': %s" % (language, x))
-    language = None
+    try:
+        trFile = os.path.join(
+            Version.dataPath(),
+            "translations",
+            f"{language.lower().replace(' ', '_')}.mo",
+        )
+        with open(trFile, "rb") as f:
+            catalog = gettext.GNUTranslations(f)
 
-# Define the config key again now that we have some options for it
+        def translate(m: str) -> str:
+            # Em Python 3, gettext já retorna str (Unicode). Nada de decode.
+            return catalog.gettext(m)
+
+        _ = translate
+    except Exception as x:
+        Log.warn("Unable to select language '%s': %s" % (language, x))
+        language = None
+
+# Define a chave de config de novo agora que temos opções reais
 langOptions = {"": "English"}
 for lang in getAvailableLanguages():
-  langOptions[lang] = _(lang)
+    # Mostra o nome do idioma já traduzido (se houver tradução carregada)
+    langOptions[lang] = _(lang)
+
 Config.define("game", "language", str, "", _("Language"), langOptions)

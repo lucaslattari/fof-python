@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-1 -*-                                        #
 #                                                                   #
 # Frets on Fire                                                     #
-# Copyright (C) 2006 Sami Kyöstilä                                  #
+# Copyright (C) 2006 Sami Kyï¿½stilï¿½                                  #
 #                                                                   #
 # This program is free software; you can redistribute it and/or     #
 # modify it under the terms of the GNU General Public License       #
@@ -23,51 +23,55 @@
 import Network
 import Engine
 import Log
-import cPickle as pickle
+import pickle
 
 from Session import ServerSession, MessageBroker
 from World import WorldServer
 
+
 class Server(Network.Server, Engine.Task):
-  def __init__(self, engine):
-    Network.Server.__init__(self)
-    self.engine = engine
-    self.sessions = {}
-    self.broker = MessageBroker()
-    self.world = WorldServer(self.engine, server = self)
-    self.broker.addMessageHandler(self.world)
+    def __init__(self, engine):
+        Network.Server.__init__(self)
+        self.engine = engine
+        self.sessions = {}
+        self.broker = MessageBroker()
+        self.world = WorldServer(self.engine, server=self)
+        self.broker.addMessageHandler(self.world)
 
-  def createConnection(self, sock):
-    return ServerSession(self.engine, sock)
+    def createConnection(self, sock):
+        return ServerSession(self.engine, sock)
 
-  def handleConnectionOpen(self, conn):
-    Log.debug("Session #%d connected." % conn.id)
-    self.sessions[conn.id] = conn
-    self.engine.addTask(conn, synchronized = False)
+    def handleConnectionOpen(self, conn):
+        Log.debug("Session #%d connected." % conn.id)
+        self.sessions[conn.id] = conn
+        self.engine.addTask(conn, synchronized=False)
 
-  def handleConnectionClose(self, conn):
-    Network.Server.handleConnectionClose(self, conn)
-    self.engine.removeTask(conn)
-    try:
-      del self.sessions[conn.id]
-    except KeyError:
-      pass
+    def handleConnectionClose(self, conn):
+        Network.Server.handleConnectionClose(self, conn)
+        self.engine.removeTask(conn)
+        try:
+            del self.sessions[conn.id]
+        except KeyError:
+            pass
 
-  def broadcastMessage(self, message, meToo = True, ignore = []):
-    for id, session in self.sessions.items():
-      if id in ignore: continue
-      session.sendMessage(message)
-    if meToo:
-      session.handleMessage(0, message)
+    def broadcastMessage(self, message, meToo=True, ignore=[]):
+        for id, session in self.sessions.items():
+            if id in ignore:
+                continue
+            session.sendMessage(message)
+        if meToo:
+            session.handleMessage(0, message)
 
-  def sendMessage(self, receiverId, message):
-    try:
-      self.sessions[receiverId].sendMessage(message)
-    except IndexError:
-      Log.warning("Tried to send message to nonexistent session #%d." % receiverId)
+    def sendMessage(self, receiverId, message):
+        try:
+            self.sessions[receiverId].sendMessage(message)
+        except IndexError:
+            Log.warning(
+                "Tried to send message to nonexistent session #%d." % receiverId
+            )
 
-  def run(self, ticks):
-    Network.communicate()
+    def run(self, ticks):
+        Network.communicate()
 
-  def stopped(self):
-    self.close()
+    def stopped(self):
+        self.close()

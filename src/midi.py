@@ -1,28 +1,34 @@
-# src/midi/__init__.py
+# src/midi.py
 """
-Compat layer para substituir o antigo pacote 'midi' do Frets on Fire (Py2).
+Compat/shim para substituir o antigo pacote "midi" do Frets on Fire (Py2),
+usando a biblioteca moderna "mido" para ler/escrever arquivos .mid.
 
-Objetivo: manter a API mínima usada por Song.py:
-  - MidiInFile(out_stream, filename).read()
-  - MidiOutStream (base com update_time, abs_time, get_current_track)
-  - MidiOutFile(fileobj) com header/start_of_track/update_time/tempo/note_on/note_off/end_of_track/eof/write
-
-Implementação: usa 'mido' para ler/escrever arquivos .mid de forma robusta.
-Isso preserva a funcionalidade real do jogo (notes.mid e editor), sem depender do pacote legado quebrado.
+Implementa somente a API que Song.py usa:
+- MidiInFile(stream, filename).read()
+- MidiOutStream (base com update_time, abs_time, get_current_track)
+- MidiOutFile(fileobj) com header/start_of_track/update_time/tempo/note_on/note_off/end_of_track/eof/write
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import BinaryIO, List
+from typing import Optional, BinaryIO, List, Tuple
 
 import mido
 
 
 class MidiOutStream:
     """
-    Stream base compatível com callbacks do parser.
-    O MidiInFile chamará estes métodos em ordem parecida com o pacote antigo.
+    Base 'stream' compatível com callbacks esperados pelo Song.py.
+    O parser (MidiInFile) vai chamar:
+      - header(format, nTracks, division)
+      - start_of_track()
+      - update_time(delta_ticks)
+      - tempo(microseconds_per_beat)
+      - note_on(channel, note, velocity)
+      - note_off(channel, note, velocity)
+      - end_of_track()
+      - eof()
     """
 
     def __init__(self):
@@ -51,7 +57,7 @@ class MidiOutStream:
     def get_current_track(self) -> int:
         return int(self._current_track)
 
-    # Eventos (subclasses podem sobrescrever; Song.MidiReader sobrescreve note_on/off/tempo)
+    # eventos padrão (subclasses sobrescrevem)
     def tempo(self, value: int):
         pass
 
@@ -64,9 +70,8 @@ class MidiOutStream:
 
 class MidiInFile:
     """
-    Leitor compatível.
-    Recebe um MidiOutStream-like e um filename.
-    Ao ler, chama callbacks no stream.
+    Leitor compatível: recebe um MidiOutStream-like e um path.
+    Ao ler, chama callbacks no stream simulando a lib antiga.
     """
 
     def __init__(self, out_stream: MidiOutStream, filename: str):
@@ -76,31 +81,33 @@ class MidiInFile:
     def read(self):
         mf = mido.MidiFile(self.filename)
 
-        # Header global
+        # chama header "global"
+        # format: 0/1/2. mido fornece .type
         self.out_stream.header(
             format=mf.type, nTracks=len(mf.tracks), division=mf.ticks_per_beat
         )
 
-        # Processa cada track separadamente, preservando get_current_track()
+        # processa track por track
         for ti, track in enumerate(mf.tracks):
             self.out_stream._current_track = ti
             self.out_stream.start_of_track()
 
+            abs_ticks = 0
             for msg in track:
-                # mido usa delta ticks em msg.time
+                # msg.time em mido é delta em ticks (int)
                 delta = int(msg.time)
-                if delta:
-                    self.out_stream.update_time(delta)
+                abs_ticks += delta
+                self.out_stream.update_time(delta)
 
                 if msg.type == "set_tempo":
-                    # microseconds_per_beat
+                    # mido usa microseconds_per_beat em msg.tempo
                     self.out_stream.tempo(int(msg.tempo))
 
                 elif msg.type == "note_on":
                     ch = int(getattr(msg, "channel", 0))
                     note = int(msg.note)
                     vel = int(msg.velocity)
-                    # note_on com vel=0 equivale a note_off
+                    # note_on vel=0 equivale a note_off
                     if vel == 0:
                         self.out_stream.note_off(ch, note, 0)
                     else:
@@ -112,7 +119,7 @@ class MidiInFile:
                     vel = int(msg.velocity)
                     self.out_stream.note_off(ch, note, vel)
 
-                # outras mensagens: ignoradas (o FoF clássico também ignorava quase tudo)
+                # demais mensagens são ignoradas (o FoF antigo também não ligava pra maioria)
 
             self.out_stream.end_of_track()
 
@@ -127,12 +134,13 @@ class _OutEvent:
 
 class MidiOutFile:
     """
-    Escritor compatível.
-    Song.py usa:
+    Escritor compatível usado por Song.save() e createSong().
+
+    O Song.py chama:
       m = MidiOutFile(f)
       m.header(division=...)
       m.start_of_track()
-      m.update_time(..., relative=0)
+      m.update_time(t, relative=0)
       m.tempo(microseconds_per_beat)
       m.note_on(...)
       m.note_off(...)
@@ -156,15 +164,18 @@ class MidiOutFile:
         self._cur_abs_tick = 0
 
     def update_time(self, value: int, relative: int = 1):
+        """
+        Lib antiga aceitava relative=0 para setar tempo absoluto.
+        Song.py usa relative=0 quase sempre.
+        """
         v = int(value)
-        # Song.py usa relative=0 para setar tempo absoluto
         if relative == 0:
             self._cur_abs_tick = v
         else:
             self._cur_abs_tick += v
 
     def tempo(self, value: int):
-        # value = microseconds_per_beat
+        # value esperado: microseconds_per_beat (como no Song.py)
         self._events.append(
             _OutEvent(
                 self._cur_abs_tick, mido.MetaMessage("set_tempo", tempo=int(value))
@@ -205,14 +216,17 @@ class MidiOutFile:
         tr = mido.MidiTrack()
         mf.tracks.append(tr)
 
-        # Ordena eventos por tempo absoluto e converte para deltas
+        # ordena por tempo absoluto e converte para deltas
         self._events.sort(key=lambda e: e.abs_tick)
 
         last = 0
         for e in self._events:
             delta = int(e.abs_tick - last)
             last = int(e.abs_tick)
-            tr.append(e.msg.copy(time=delta))
+            msg = e.msg.copy(time=delta)
+            tr.append(msg)
 
+        # encerra
         tr.append(mido.MetaMessage("end_of_track", time=0))
+
         mf.save(file=self._fileobj)

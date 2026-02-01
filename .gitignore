@@ -1,0 +1,89 @@
+################################################################################
+# Python / Bytecode / Cache
+################################################################################
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+
+################################################################################
+# Virtualenvs
+################################################################################
+fof_env/
+.venv/
+venv/
+env/
+
+################################################################################
+# Build / Distribution (PyInstaller, etc.)
+################################################################################
+build/
+dist/
+*.spec
+
+################################################################################
+# Logs / Dumps / Temp
+################################################################################
+*.log
+*.tmp
+*.bak
+*.swp
+*.dmp
+
+################################################################################
+# OS / Editor junk
+################################################################################
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+
+# VS Code / JetBrains
+.vscode/
+.idea/
+
+################################################################################
+# Frets on Fire: assets / generated stuff you DON'T want in Git
+################################################################################
+# Se você gera bitmaps cacheados de SVGs, deixe fora (ajuste se quiser versionar)
+data/*.png
+data/*.jpg
+data/*.jpeg
+
+# Se tiver caches gerados pelo jogo (exemplos comuns)
+data/cache/
+data/*.cache
+
+################################################################################
+# MÚSICAS LICENCIADAS - NÃO SUBIR PRO GITHUB
+################################################################################
+# O teu diretório real é: data/songs/pack guitar hero
+data/songs/pack guitar hero/
+
+# Caso exista também dentro do dist (às vezes você copia assets pro build):
+dist/**/data/songs/pack guitar hero/
+
+################################################################################
+# Opcional: se você não quer subir NENHUMA música, só o motor do jogo
+################################################################################
+# data/songs/
+# dist/**/data/songs/
+
+################################################################################
+# Demais arquivos
+################################################################################
+FretsOnFire.spec
+arquivos.txt
+lista.txt
+pastas.txt
+changelog.old
+todo.txt

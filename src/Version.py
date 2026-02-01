@@ -1,48 +1,65 @@
+# src/Version.py
 #####################################################################
 # -*- coding: iso-8859-1 -*-                                        #
 #                                                                   #
 # Frets on Fire                                                     #
-# Copyright (C) 2006 Sami Ky�stil�                                  #
-#                                                                   #
-# This program is free software; you can redistribute it and/or     #
-# modify it under the terms of the GNU General Public License       #
-# as published by the Free Software Foundation; either version 2    #
-# of the License, or (at your option) any later version.            #
-#                                                                   #
-# This program is distributed in the hope that it will be useful,   #
-# but WITHOUT ANY WARRANTY; without even the implied warranty of    #
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the     #
-# GNU General Public License for more details.                      #
-#                                                                   #
-# You should have received a copy of the GNU General Public License #
-# along with this program; if not, write to the Free Software       #
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,        #
-# MA  02110-1301, USA.                                              #
+# Copyright (C) 2006 Sami Ky�stil�                                  #
 #####################################################################
 
 import sys
 import os
-VERSION = '1.3'
+
+VERSION = "1.3"
+
 
 def appName():
-  return "fretsonfire"
+    return "fretsonfire"
+
 
 def revision():
-  return int("$LastChangedRevision: 110 $".split(" ")[1])
+    """
+    Legacy SVN revision marker.
+    Kept for compatibility with the original versioning scheme.
+    """
+    try:
+        return int("$LastChangedRevision: 110 $".split(" ")[1])
+    except Exception:
+        # Fallback in case the format ever changes
+        return 0
+
 
 def version():
-  return "%s.%d" % (VERSION, revision())
+    return "%s.%d" % (VERSION, revision())
+
+
+import os
+import sys
+
 
 def dataPath():
-  # Determine whether were running from an exe or not
-  if hasattr(sys, "frozen"):
-    if os.name == "posix":
-      dataPath = os.path.join(os.path.dirname(sys.argv[0]), "../lib/fretsonfire")
-      if not os.path.isdir(dataPath):
-        dataPath = "data"
-    else:
-      dataPath = "data"
-  else:
-    dataPath = os.path.join("..", "data")
-  return dataPath
-  
+    """
+    Determine where the game data directory is located.
+
+    Comportamento:
+    - Preserva lógica legacy para builds congeladas (py2exe / frozen)
+    - Em modo script (Python 3 moderno), resolve o caminho absoluto
+      com base na localização real do código-fonte (Version.py)
+    """
+
+    # Caso executável congelado (comportamento legacy)
+    if hasattr(sys, "frozen"):
+        if os.name == "posix":
+            data_path = os.path.join(os.path.dirname(sys.argv[0]), "../lib/fretsonfire")
+            if not os.path.isdir(data_path):
+                data_path = "data"
+        else:
+            data_path = "data"
+
+        return os.path.abspath(data_path)
+
+    # Caso normal: execução via python src/FretsOnFire.py
+    here = os.path.abspath(os.path.dirname(__file__))  # src/
+    project_root = os.path.abspath(os.path.join(here, ".."))
+    data_path = os.path.join(project_root, "data")
+
+    return data_path
